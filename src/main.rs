@@ -98,17 +98,23 @@ unsafe fn add_tray_icon(hwnd: HWND) {
     nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     nid.uCallbackMessage = WM_TRAYICON;
     
-    // 加载自定义图标（从 exe 同目录下的 favicon.ico）
-    let icon_path = get_exe_dir_path("favicon.ico");
-    nid.hIcon = LoadImageW(
-        null_mut(),
-        icon_path.as_ptr(),
-        IMAGE_ICON,
-        0, 0,
-        LR_LOADFROMFILE | LR_DEFAULTSIZE,
-    ) as _;
+    // 优先从 exe 嵌入的资源加载图标（资源 ID = 1）
+    let instance = GetModuleHandleW(null_mut());
+    nid.hIcon = LoadIconW(instance, 1 as *const u16);
     
-    // 如果加载失败，使用系统默认图标
+    // 如果资源加载失败，尝试从文件加载
+    if nid.hIcon.is_null() {
+        let icon_path = get_exe_dir_path("favicon.ico");
+        nid.hIcon = LoadImageW(
+            null_mut(),
+            icon_path.as_ptr(),
+            IMAGE_ICON,
+            0, 0,
+            LR_LOADFROMFILE | LR_DEFAULTSIZE,
+        ) as _;
+    }
+    
+    // 如果仍然失败，使用系统默认图标
     if nid.hIcon.is_null() {
         nid.hIcon = LoadIconW(null_mut(), IDI_APPLICATION);
     }
